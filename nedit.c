@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include "raylib.h"
 
@@ -15,9 +16,6 @@ int main()
 
     DIR *folder;
     struct dirent *entry;
-    int files = 0;
-
-
 
     while (!WindowShouldClose())
     {
@@ -29,6 +27,51 @@ int main()
             return(1);
         } 
 
+        int currentProcess = 0;
+        int mouseHoverRec = -1;
+
+        int files = 0;
+        char **processText = NULL;
+
+        while ((entry = readdir(folder)))
+        {
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+            {
+                processText = realloc(processText, (files + 1) * sizeof(char*));
+                processText[files] = malloc(strlen(entry->d_name) + 1);
+
+                strcpy(processText[files], entry->d_name);
+                files++;
+            }
+        }
+        int num_processes = files;
+
+        Rectangle *toggleRecs = NULL;
+
+        for (int i = 0; i < num_processes; i++)
+        {
+            toggleRecs = realloc(toggleRecs, (files + 1) * sizeof(Rectangle));
+
+            toggleRecs[i].x = 30.0f;
+            toggleRecs[i].y = (float)(50 + 32*i);
+            toggleRecs[i].width = 250.0f;
+            toggleRecs[i].height = 30.0f;
+        }
+
+        for (int i = 0; i < num_processes; i++)
+        {
+            if (CheckCollisionPointRec(GetMousePosition(), toggleRecs[i]))
+            {
+                mouseHoverRec = i;
+
+                if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+                {
+                    currentProcess = i;
+                }
+                break;
+            }
+            else mouseHoverRec = -1;
+        }
         BeginDrawing();
 
             ClearBackground(RAYWHITE);
@@ -39,18 +82,16 @@ int main()
             DrawText("File", screenWidthMid, 0, 15, GRAY);
             DrawRectangle(SCREEN_WIDTH * 0.2, 20, screenWidthStart, SCREEN_HEIGHT - (SCREEN_HEIGHT * 0.01), GRAY);
 
-            files = 0;
-            while ((entry = readdir(folder)))
+            for (int i = 0; i < num_processes; i++)
             {
-                files++;
-                /* printf("File %3d: %s\n", files, entry->d_name); */
-
-                if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
-                {
-                    DrawRectangle(10, 30 + 20 * files, 200, 20, Fade(BLACK, 0.5f));
-                    DrawText(entry->d_name, 35, 36 + 20 * files, 10, WHITE);
-                }
+                DrawRectangleRec(toggleRecs[i], ((i == currentProcess) || (i == mouseHoverRec)) ? SKYBLUE : LIGHTGRAY);
+                DrawRectangleLines((int)toggleRecs[i].x, (int) toggleRecs[i].y, (int) toggleRecs[i].width, (int) toggleRecs[i].height, ((i == currentProcess) || (i == mouseHoverRec)) ? BLUE : GRAY);
+                DrawText( processText[i], (int)( toggleRecs[i].x + toggleRecs[i].width/2 - MeasureText(processText[i], 10)/2), (int) toggleRecs[i].y + 11, 10, ((i == currentProcess) || (i == mouseHoverRec)) ? DARKBLUE : DARKGRAY);
             }
+            for (int i = 0; i < files; i++) {
+                free(processText[i]);
+            }
+            free(processText);
             closedir(folder);
         EndDrawing();
     } 
